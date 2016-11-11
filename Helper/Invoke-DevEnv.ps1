@@ -13,6 +13,7 @@ param()
     if(-not (Get-Module -name 'nvm')) 
     {
         $moduleFile = Join-Path $thisPath '..\nvm\nvm.psd1' -Resolve;
+        $manifest=Test-ModuleManifest -Path $moduleFile -Verbose;
         Import-Module $moduleFile -Verbose:$false |Out-Null
     }
 
