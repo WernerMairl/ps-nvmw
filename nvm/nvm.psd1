@@ -66,8 +66,8 @@ FormatsToProcess = @()
 # NestedModules = @()
 
 # Functions to export from this module
-FunctionsToExport =
-               @("Set-NodeVersion", "Install-NodeVersion", "Remove-NodeVersion", "Get-NodeVersions", "Set-NodeInstallLocation", "Get-NodeInstallLocation")
+FunctionsToExport = @("*")
+               #@("Set-NodeVersion", "Install-NodeVersion", "Remove-NodeVersion", "Get-NodeVersions", "Set-NodeInstallLocation", "Get-NodeInstallLocation")
 
 # Cmdlets to export from this module
 CmdletsToExport = @()
