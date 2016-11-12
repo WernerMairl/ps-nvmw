@@ -1,4 +1,5 @@
-﻿function Install-NodeVersion {
+﻿function Install-NodeVersion 
+{
     <#
     .Synopsis
         Install a version of node.js
@@ -22,44 +23,83 @@
         Install-NodeVersion v5.0.0 -architecture x86 -proxy http://localhost:3128
         Installs the x86 version even if you're on an x64 machine using default CNTLM proxy
     #>
+    [cmdletbinding(DefaultParameterSetName="Latest")]
     param(
-        [string]
-        [Parameter(Mandatory=$true)]
-        [ValidatePattern('^v\d\.\d{1,2}\.\d{1,2}$|^latest$')]
-        $Version,
 
-        [switch]
-        $Force,
-
-        [string]
-        $architecture = $env:PROCESSOR_ARCHITECTURE,
-        
-        [string]
-        $proxy
+         [Parameter(Mandatory=$false, ParameterSetName="Latest")][Switch]$Latest=$true
+        ,[Parameter(Mandatory=$false, ParameterSetName="Version")][ValidateScript({Validate-Version -Version $_})][string]$Version
+        ,[Parameter(Mandatory=$false)][switch]$Force = $false
+        ,[Parameter(Mandatory=$false)][ValidateSet("x86","x64", "AMD64", "IA64")][string]$Architecture = $env:PROCESSOR_ARCHITECTURE  #https://msdn.microsoft.com/en-us/library/aa384274.aspx
+        ,[Parameter(Mandatory=$false)][string]$Proxy
     )
+    
+    # Install Strategy
+    # nodejs.org provides msi packages BUT we use/handle them like zip files.
+    # Means: we extract them in administrative mode so we can have multiple installations in parallel => MSI/Windows requires always only ONE Version installed!
 
-    if ($version -match "latest") {
+
+
+
+
+    #1. caluclate the System.Version that should be installed
+
+    [System.Version]$resolvedVersion=$null;
+
+    if ($PSCmdlet.ParameterSetName -eq "Latest")
+    {
+        if ($Latest.IsPresent -eq $false)
+        {
+            throw "ParameterSet Latest is used bute Switch is set to false => not supported";
+        }
         $listing = "https://nodejs.org/dist/latest/"
-         $r = (wget -UseBasicParsing $listing).content
-         if ($r -match "node-(v[0-9\.]+).*?\.msi") {
-             $version = $matches[1]
-         }
-         else {
-             throw "failed to retrieve latest version from '$listing'"
-         }
+        $r = (wget -UseBasicParsing $listing).content
+        if ($r -match "node-(v[0-9\.]+).*?\.msi") 
+        {
+            $resolvedVersion = $matches[1]
+        }
+        else 
+        {
+            throw "failed to retrieve latest version from '$listing'"
+        }
+    }
+    else #assuming ParameterSet "Version"
+    {
+       $resolvedVersion=Validate-Version $Version -Passthrough;
     }
 
+    if ($resolvedVersion -eq $null)
+    {
+      throw "something goes wrong internally";
+    }
+    #2. ensure that msi is available
+
+    $msiExecCommand=Get-Command -Name "msiexec" -ErrorAction Stop; #throw a execption if not available in the path
+
+    #3. calculate and check the install folder/existing installation
     $nvmwPath = Get-NodeInstallLocation
+    [string]$foldername = $resolvedVersion.ToString();
+    $installFolderPath = Join-Path $nvmwPath $foldername;
+    [bool]$folderExists=Test-Path -Path $installFolderPath;
 
-    $requestedVersion = Join-Path $nvmwPath $version
-
-    if ((Test-Path -Path $requestedVersion) -And (-Not $force)) {
-        "Version $version is already installed, use -Force to reinstall"
-        return
+    if ($folderExists) 
+    {
+        if ($Force.IsPresent -eq $false)
+        {
+            Write-Verbose "Version $version is already installed, use -Force to reinstall"
+            #TODO we should define a PSObject for outpit with all the details
+            return;
+        }
+        else
+        {
+          ##TODO uninstall current installed version AND delete the folder (remaining items AFTER uninstall)
+          ##Uninstall means remove the folder (structure) => msi is used ONLX in administrative mode, not in full mode => deleting is allowed!
+          $folderExists=Test-Path -Path $installFolderPath ; #refresh $folderExists!
+        }
     }
-
-    if (-Not (Test-Path -Path $requestedVersion)) {
-        New-Item $requestedVersion -ItemType 'Directory'
+    
+    if ($folderExists -eq $false)
+    {
+        [System.IO.Directory]::CreateDirectory($installFolderPath) | Out-Null;
     }
 
     $msiFile = "node-$version-x86.msi"
@@ -75,29 +115,31 @@
         }
     }
 
-    if ($proxy) {
-        Invoke-WebRequest -Uri $nodeUrl -OutFile (Join-Path $requestedVersion $msiFile) -Proxy $proxy
-    } else {
-        Invoke-WebRequest -Uri $nodeUrl -OutFile (Join-Path $requestedVersion $msiFile)
+    $outfile=Join-Path $installFolderPath $msiFile;
+    $cache=$true;
+    if ($cache -eq $false)
+    {
+        if ([string]::IsNullOrEmpty($Proxy) -eq $false) 
+        {
+            Invoke-WebRequest -Uri $nodeUrl -OutFile $outfile -Proxy $Proxy;
+        } 
+        else 
+        {
+            Invoke-WebRequest -Uri $nodeUrl -OutFile $outfile;
+        }
     }
-    
-
-    if (-Not (Get-Command msiexec)) {
-        "msiexec is not in your path"
-        return
-    }
-
-    $unpackPath = Join-Path $requestedVersion '.u'
-    if (Test-Path $unpackPath) {
+    $unpackPath = Join-Path $installFolderPath '.u' #???
+    if (Test-Path $unpackPath) 
+    {
         Remove-Item $unpackPath -Recurse -Force
     }
 
     New-Item $unpackPath -ItemType Directory
 
-    $args = @("/a", (Join-Path $requestedVersion $msiFile), "/qb", "TARGETDIR=`"$unpackPath`"")
+    $args = @("/a", $outfile, "/qb", "TARGETDIR=`"$unpackPath`"")
 
     Start-Process -FilePath "msiexec.exe" -Wait -PassThru -ArgumentList $args
 
-    Move-Item (Join-Path (Join-Path $unpackPath 'nodejs') '*') -Destination $requestedVersion -Force
+    Move-Item (Join-Path (Join-Path $unpackPath 'nodejs') '*') -Destination $installFolderPath -Force
     Remove-Item $unpackPath -Recurse -Force
 }
