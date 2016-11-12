@@ -18,6 +18,11 @@ param()
     }
 
 ## Now the current module is loaded and can be called for dev/debug
-Get-NodeVersions -Remote
+#Get-NodeVersions -Remote -verbose:$false;
 
-#Install-NodeVersion -Version "v0.1.100";
+# Problem found: not every (older) version supports windows installer dll... we need better exception messages
+
+#Install-NodeVersion -Version "v0.1.100" -Force;
+
+Install-NodeVersion -Version "v0.10.14" -Force:$false;
+Set-NodeVersion -Version "v0.10.14" -Verbose -Force:$true;
