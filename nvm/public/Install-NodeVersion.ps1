@@ -119,7 +119,7 @@
     }
 
     $outfile=Join-Path $installFolderPath $msiFile;
-    $cache=$true;
+    $cache=$false;
     if ($cache -eq $false)
     {
         if ([string]::IsNullOrEmpty($Proxy) -eq $false) 
