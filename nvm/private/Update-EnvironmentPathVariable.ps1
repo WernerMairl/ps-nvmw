@@ -1,4 +1,7 @@
-﻿function Update-EnvironmentPathVariable 
+﻿#Adds a new value to EnvironmentVariables like "PATH" (added string with ";" as separator)
+#Process,User and Machine can be selected
+#old values con be removed/replaced by using $ReplaceMask
+function Update-EnvironmentPathVariable 
 {
     [cmdletbinding()]
     param
