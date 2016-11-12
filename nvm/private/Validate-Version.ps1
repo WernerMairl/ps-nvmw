@@ -1,5 +1,6 @@
 ﻿function Validate-Version
 {
+    [cmdletbinding()]
     param
     (
         [string]$Version
