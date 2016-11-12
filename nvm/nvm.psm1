@@ -19,6 +19,9 @@ $Private = @( Get-ChildItem -Path "$($PSScriptRoot)\Private\*.ps1" -ErrorAction 
         }
     }
 
+#In Windows PowerShell 3.0, if you send it a collection of object and ask for a property that the collection doesn’t have, Windows PowerShell checks to see if the objects in the collection have that property and, if they do, it returns the property value. (Try: (Get-Process).Name ).
+
+
 [bool]$exportVerbosity=$true;
 Export-ModuleMember -Function $Public.Basename -Verbose:$exportVerbosity | Write-Verbose; #Export Public functions
 
