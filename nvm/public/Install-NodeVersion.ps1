@@ -14,6 +14,9 @@
     .Parameter $proxy
         Define HTTP proxy used when downloading an installer
     .Example
+        Install-NodeVersion
+        Install latest version of node.js into the module directory. "latest" is defined by https://nodejs.org/dist/latest/
+    .Example
         Install-NodeVersion v5.0.0
         Install version 5.0.0 of node.js into the module directory
     .Example
@@ -25,7 +28,6 @@
     #>
     [cmdletbinding(DefaultParameterSetName="Latest")]
     param(
-
          [Parameter(Mandatory=$false, ParameterSetName="Latest")][Switch]$Latest=$true
         ,[Parameter(Mandatory=$false, ParameterSetName="Version")][ValidateScript({Validate-Version -Version $_})][string]$Version
         ,[Parameter(Mandatory=$false)][switch]$Force = $false
@@ -37,9 +39,10 @@
     # nodejs.org provides msi packages BUT we use/handle them like zip files.
     # Means: we extract them in administrative mode so we can have multiple installations in parallel => MSI/Windows requires always only ONE Version installed!
 
-
-
-
+    #Lessons learned
+    #  there are a lot of versions available for download on 'https://nodejs.org/dist' but not every version has windows installer and our code throws exceptions (without meaningful wording/explanation why). 
+    #  We should improve the exception messages for usability in this case.
+ 
 
     #1. caluclate the System.Version that should be installed
 
@@ -73,7 +76,7 @@
     }
     #2. ensure that msi is available
 
-    $msiExecCommand=Get-Command -Name "msiexec" -ErrorAction Stop; #throw a execption if not available in the path
+    $msiExecCommand=Get-Command -Name "msiexec" -ErrorAction Stop; #throw a execption if not available in the path => NANO Server !?
 
     #3. calculate and check the install folder/existing installation
     $nvmwPath = Get-NodeInstallLocation
