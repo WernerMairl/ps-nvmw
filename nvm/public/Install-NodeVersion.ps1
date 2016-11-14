@@ -88,8 +88,7 @@
     {
         if ($Force.IsPresent -eq $false)
         {
-            Write-Verbose "Version $version is already installed, use -Force to reinstall"
-            #TODO we should define a PSObject for outpit with all the details
+            #TODO we should define a PSObject for outpit with all the details => empty folder causes NO install!
             return;
         }
         else
@@ -105,16 +104,23 @@
         [System.IO.Directory]::CreateDirectory($installFolderPath) | Out-Null;
     }
 
-    $msiFile = "node-$version-x86.msi"
-    $nodeUrl = "https://nodejs.org/dist/$version/$msiFile"
+    if ($resolvedVersion.Revision -ne -1)
+    {
+      throw "probably unexpected value for NodeJS.org folder structure";
+    }
+    [string]$nodeVersionLabel = "v$($resolvedVersion.ToString())"; #$Version.Tostring results WITHOUT Revision Part if it is -1!;
+    
+    [string]$msiFile = "node-$($nodeVersionLabel)-x86.msi";
+    $nodeUrl = "https://nodejs.org/dist/$($nodeVersionLabel)/$($msiFile)";
 
-    if ($architecture -eq 'AMD64') {
-        $msiFile = "node-$version-x64.msi"
+    if ($architecture -eq 'AMD64') 
+    {
+        $msiFile = "node-$nodeVersionLabel-x64.msi"
 
         if ($version -match '^v0\.\d{1,2}\.\d{1,2}$') {
-            $nodeUrl = "https://nodejs.org/dist/$version/x64/$msiFile"
+            $nodeUrl = "https://nodejs.org/dist/$nodeVersionLabel/x64/$msiFile"
         } else {
-            $nodeUrl = "https://nodejs.org/dist/$version/$msiFile"
+            $nodeUrl = "https://nodejs.org/dist/$nodeVersionLabel/$msiFile"
         }
     }
 
@@ -122,6 +128,7 @@
     $cache=$false;
     if ($cache -eq $false)
     {
+        Write-Verbose "Web-Request Url: $($nodeUrl)";
         if ([string]::IsNullOrEmpty($Proxy) -eq $false) 
         {
             Invoke-WebRequest -Uri $nodeUrl -OutFile $outfile -Proxy $Proxy;
